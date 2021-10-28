@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS users(email TEXT PRIMARY KEY, hash BLOB, salt TEXT, first TEXT, last TEXT, is_teacher INTEGER)
+CREATE TABLE IF NOT EXISTS projects(project_id TEXT PRIMARY KEY, name TEXT)
+CREATE TABLE IF NOT EXISTS members(project_id TEXT, email TEXT)
+CREATE TABLE IF NOT EXISTS admins(project_id TEXT PRIMARY KEY, email TEXT)
+CREATE TABLE IF NOT EXISTS files(file_id TEXT PRIMARY KEY, project_id TEXT)
