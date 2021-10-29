@@ -139,6 +139,7 @@ def register():
         return redirect(url_for('register_page'))
     else:
         session['email'] = email
+        flash('Account creastion successful!', 'success')
         return redirect(url_for('projects'))
 
 
