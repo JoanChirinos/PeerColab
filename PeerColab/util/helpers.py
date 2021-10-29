@@ -24,6 +24,8 @@ def verify_auth_args(*args: str) -> bool:
 
     """
     # TODO: Robustify. Possibly using **kwargs and arg-specific verification
+    # TODO: Return some sequence or mapping corresponding to which args are
+    #       invalid
     for arg in args:
         if len(arg.strip()) == 0 or arg.strip() != arg:
             return False
