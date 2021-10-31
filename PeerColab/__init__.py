@@ -81,7 +81,7 @@ def register_page():
 @app.route('/projects')
 def projects():
     '''
-    Render main project page.
+    Render main projects page.
     '''
     if 'email' not in session:
         flash('You must be logged in to view that page!', 'danger')
@@ -94,6 +94,26 @@ def projects():
                          dbm.is_admin(email, id)) for id in ids)
         projects = tuple(sorted(projects))
         return render_template('projects.html', projects=projects)
+
+
+@app.route('/project/<project_id>')
+def project(project_id):
+    '''
+    Render page for project with given id
+    '''
+    if 'email' not in session:
+        flash('You must be logged in to view that page!', 'danger')
+        return redirect(url_for('home'))
+    else:
+        email = session['email']
+        if not dbm.is_member(email, project_id):
+            flash('You don\'t have permission to do that!', 'warning')
+            return redirect(url_for(projects))
+
+        project_name = dbm.get_project_name(project_id)
+        files =
+
+        return render_template('project.html', **locals())
 
 
 @app.route('/authenticate', methods=['POST'])
@@ -155,12 +175,12 @@ def logout():
     return redirect(url_for('home'))
 
 
-@app.route('/create', methods=['POST'])
-def create():
+@app.route('/create/project', methods=['POST'])
+def create_project():
     '''
     Attempt to create project.
 
-    Redirects to project page.
+    Redirects to projects page.
     '''
     if 'email' not in session:
         flash('You need to be logged in to do that!', 'warning')
@@ -183,8 +203,28 @@ def create():
     return redirect(url_for('projects'))
 
 
-@app.route('/delete/<project_id>')
-def delete(project_id: str):
+@app.route('/create/file/<project_id>', methods=['POST'])
+def create_file(project_id: str):
+    '''
+    Attempt to create file.
+
+    Redirects to project page.
+    '''
+    if 'email' not in session:
+        flash('You need to be logged in to do that!', 'warning')
+        return redirect(url_for('home'))
+    email = session['email']
+
+    name = request.form['fileName']
+
+    dbm.create_file(email, project_id, name)
+
+    flash('Successfully created new file!', 'success')
+    return redirect(url_for('projects'))
+
+
+@app.route('/delete/<type>/<id>')
+def delete(type: str, id: str):
     '''
     Attempt to delete project with given project_id.
 
@@ -194,14 +234,24 @@ def delete(project_id: str):
         flash('You need to be logged in to do that!', 'warning')
         return redirect(url_for('home'))
     email = session['email']
-    result, error_msg = dbm.delete_project(email, project_id)
+    result, error_msg = None, None
 
-    if not result:
+    if type == 'project':
+        result, error_msg = dbm.delete_project(email, id)
+    if type == 'file':
+        result, error_msg = dbm.delete_file(email, id)
+
+    if result is None:
+        flash('Invalid request!', 'warning')
+    elif not result:
         flash(error_msg, 'warning')
     else:
         flash('Project deleted successfully!', 'success')
 
-    return redirect(url_for('projects'))
+    if type == 'project':
+        return redirect(url_for('projects'))
+    elif type == 'file':
+        return redirect(url_for('project', project_id=id))
 
 
 if __name__ == '__main__':
