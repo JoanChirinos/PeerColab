@@ -264,7 +264,7 @@ class DBManager:
         Returns
         -------
         Tuple[str, ...]
-            Tuple containing project_id strings.
+            [project_id, ...]
 
         """
         db = sqlite3.connect(self.db_filename)
@@ -274,6 +274,8 @@ class DBManager:
                   (email,))
 
         projects = tuple(x[0] for x in c.fetchall())
+
+        db.close()
 
         return projects
 
@@ -290,7 +292,7 @@ class DBManager:
         -------
         Tuple[bool, str]
             (True, 'project name') if project exists.
-            (False, '') otherwise
+            (False, 'error_msg') otherwise
 
         """
         db = sqlite3.connect(self.db_filename)
@@ -302,17 +304,138 @@ class DBManager:
         name = c.fetchone()
 
         if name is None:
-            return False, ''
+            return False, 'Project doesn\'t exist!'
+
+        db.close()
+
+        return True, name[0]
+
+    def create_file(self, email: str, project_id: str,
+                    name: str) -> Tuple[bool, str]:
+        """
+        Create file with given name in project.
+
+        Parameters
+        ----------
+        email : str
+            email of member creating file.
+        project_id : str
+            the project id.
+        name : str
+            the name of the file.
+
+        Returns
+        -------
+        Tuple[bool, str]
+            (True, '') on success.
+            (False, 'error_msg') on failure.
+
+        """
+        db = sqlite3.connect(self.db_filename)
+        c = db.cursor()
+
+        # Check if email is member of project
+        c.execute('SELECT email FROM members WHERE project_id=? AND email=?',
+                  (project_id, email))
+
+        member = c.fetchone()
+
+        if not member:
+            return False, 'You don\'t have permission to do that.'
+
+        # Check if file with name already exists in project
+        c.execute('SELECT name FROM files WHERE project_id=? AND name=?',
+                  (project_id, name))
+
+        exists = c.fetchone()
+
+        if exists:
+            return False, 'File with that name already exists!'
+
+        # Create file
+        # TODO: Actually create the file in our filesystem
+        file_id = str(uuid.uuid1())
+
+        c.execute('INSERT INTO files VALUES(?,?,?)',
+                  (file_id, project_id, name))
+
+    def get_files(self, email: str, project_id: str) -> Tuple[str, ...]:
+        """
+        Get file_ids of files in project.
+
+        Parameters
+        ----------
+        email : str
+            the email of the user.
+        project_id : str
+            the project id.
+
+        Returns
+        -------
+        Tuple[str, ...]
+            [file_id, ...]
+
+        """
+        db = sqlite3.connect(self.db_filename)
+        c = db.cursor()
+
+        c.execute('SELECT file_id FROM files WHERE project_id=?',
+                  (project_id,))
+
+        files = tuple(x[0] for x in c.fetchall())
+
+        db.close()
+
+        return files
+
+    def get_file_name(self, file_id: str) -> Tuple[bool, str]:
+        """
+        Get name of file with given id.
+
+        Parameters
+        ----------
+        file_id : str
+            the id.
+
+        Returns
+        -------
+        Tuple[bool, str]
+            (True, 'file name') on success.
+            (False, 'error_msg') on failure.
+
+        """
+        db = sqlite3.connect(self.db_filename)
+        c = db.cursor()
+
+        c.execute('SELECT name FROM files WHERE file_id=?',
+                  (file_id,))
+
+        name = c.fetchone()
+
+        if name is None:
+            return False, 'That file doesn\'t exist!'
+
+        db.close()
 
         return True, name[0]
 
     def is_teacher(self, email: str) -> bool:
-        '''
-        Checks if email is associated with a teacher
+        """
+        Check if email is associated with a teacher.
 
-        True if email is associated with a teacher.
-        False otherwise.
-        '''
+        Parameters
+        ----------
+        email : str
+            the email.
+
+        Returns
+        -------
+        bool
+            True if teacher.
+            False otherwise.
+
+        """
+
         db = sqlite3.connect(self.db_filename)
         c = db.cursor()
 
@@ -328,12 +451,23 @@ class DBManager:
             return bool(teacher[0])
 
     def is_admin(self, email: str, project_id: str) -> bool:
-        '''
-        Checks if email is admin for given project.
+        """
+        Check if email is admin for given project.
 
-        True if so.
-        False otherwise.
-        '''
+        Parameters
+        ----------
+        email : str
+            the email.
+        project_id : str
+            the project.
+
+        Returns
+        -------
+        bool
+            True if so.
+            False otherwise.
+
+        """
         db = sqlite3.connect(self.db_filename)
         c = db.cursor()
 
@@ -346,3 +480,34 @@ class DBManager:
             return False
 
         return admin[0] == email
+
+    def is_member(self, email: str, project_id: str) -> bool:
+        """
+        Check if email is project member.
+
+        Parameters
+        ----------
+        email : str
+            the email.
+        project_id : str
+            the project.
+
+        Returns
+        -------
+        bool
+            True if so.
+            False otherwise.
+
+        """
+        db = sqlite3.connect(self.db_filename)
+        c = db.cursor()
+
+        c.execute('SELECT email FROM members WHERE email=? AND project_id=?',
+                  (email, project_id))
+
+        member = c.fetchone()
+
+        if member is None:
+            return False
+
+        return member[0] == email
