@@ -111,7 +111,7 @@ def project(project_id):
             return redirect(url_for(projects))
 
         project_name = dbm.get_project_name(project_id)
-        files =
+        #files =
 
         return render_template('project.html', **locals())
 
